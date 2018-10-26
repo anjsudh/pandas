@@ -121,13 +121,19 @@ class PyArrowImpl(BaseImpl):
             table = self.api.Table.from_pandas(df, timestamps_to_ms=True,
                                                **from_pandas_kwargs)
             self.api.parquet.write_table(
-                table, path, compression=compression, **kwargs)
+                    table, path, compression=compression, **kwargs)
 
         else:
             table = self.api.Table.from_pandas(df, **from_pandas_kwargs)
-            self.api.parquet.write_table(
-                table, path, compression=compression,
-                coerce_timestamps=coerce_timestamps, **kwargs)
+            if ('partition_cols' in kwargs and
+                    len(kwargs['partition_cols']) > 0):
+                self.api.parquet.write_to_dataset(
+                    table, path, compression=compression,
+                    coerce_timestamps=coerce_timestamps, **kwargs)
+            else:
+                self.api.parquet.write_table(
+                    table, path, compression=compression,
+                    coerce_timestamps=coerce_timestamps, **kwargs)
 
     def read(self, path, columns=None, **kwargs):
         path, _, _, should_close = get_filepath_or_buffer(path)
@@ -252,7 +258,8 @@ def to_parquet(df, path, engine='auto', compression='snappy', index=None,
     ----------
     df : DataFrame
     path : string
-        File path
+        File path ( Will be used as Directory path if
+        'partition_cols' is provided as parameter for 'pyarrow' engine).
     engine : {'auto', 'pyarrow', 'fastparquet'}, default 'auto'
         Parquet library to use. If 'auto', then the option
         ``io.parquet.engine`` is used. The default ``io.parquet.engine``
